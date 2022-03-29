@@ -58,20 +58,15 @@ public class ProdutoDaoJDBC implements ProdutoDao {
     public void atualizar(Produto obj) {
         PreparedStatement st = null;
         try {
-            st = conn.prepareStatement(
-                    "UPDATE produto " +
-                            "SET prod_nome = ?, prod_descricao = ?" +
-                            "WHERE prod_id = ?");
+            st = conn.prepareStatement("UPDATE produto " + "SET prod_nome = ?, prod_descricao = ?" + "WHERE prod_id = ?");
 
             st.setString(1, obj.getNome());
             st.setString(2, obj.getDescricao());
             st.setInt(3, obj.getId());
             st.executeUpdate();
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             throw new DbException(e.getMessage());
-        }
-        finally {
+        } finally {
             DB.closeStatement(st);
         }
 
@@ -177,7 +172,6 @@ public class ProdutoDaoJDBC implements ProdutoDao {
                 mercSet.add(merc);
                 tecSet.add(tec);
                 setProd.add(obj);
-
             }
 
             organizaProduto(setProd, mercSet, tecSet);
@@ -193,21 +187,12 @@ public class ProdutoDaoJDBC implements ProdutoDao {
 
     public void organizaProduto(Set<Produto> setProd, Set<Mercado> mercSet, Set<Tecnologia> tecSet) {
 
-        for (Produto prod :
-                setProd) {
-            for (Mercado merc :
-                    mercSet) {
-                if (prod.getId() == merc.getIdProd()) {
-                    prod.addMerc(merc);
-                }
-            }
-            for (Tecnologia tec :
-                    tecSet) {
-                if (prod.getId() == tec.getIdProd()) {
-                    prod.addTec(tec);
-                }
-            }
-        }
+        for (Produto prod : setProd) {
+            Set<Mercado> setMercTemp = mercSet.stream().filter(x -> Objects.equals(x.getIdProd(), prod.getId())).collect(Collectors.toSet());
+            prod.setListMerc(new ArrayList<>(setMercTemp));
 
+            Set<Tecnologia> setTecTemp = tecSet.stream().filter(x -> x.getIdProd() == prod.getId()).collect(Collectors.toSet());
+            prod.setListTec(new ArrayList<>(setTecTemp));
+        }
     }
 }

@@ -21,19 +21,13 @@ public class Programa {
             System.out.println(x);
         }
 
-        Produto prod = new Produto();
+      /*  Produto prod = new Produto();
         prod.setId(9);
         prod.setNome("PlayStation");
-        prod.setDescricao("40028922");
+        prod.setDescricao("40028922");*/
 
-        produtoDao.atualizar(prod);
+    //    produtoDao.atualizar(prod);
 
-      li1 = produtoDao.buscarTodos();
-
-        for (Produto x:
-                li1) {
-            System.out.println(x);
-        }
 
         /*produtoDao.atualizar(prod);
        /* produtoDao.inserir(prod);*/
