@@ -1,26 +1,37 @@
-/*package model.resources;
+package modelo.controladores;
 
-import model.entities.Produto;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
-import org.springframework.web.bind.annotation.RestController;
+import com.sun.net.httpserver.HttpServer;
+import modelo.servico.ProdutoServico;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import com.google.gson.Gson;
 
-
-@RestController
-@RequestMapping(value="/produtos")
 public class ProdutoControler {
 
-    @RequestMapping(method= RequestMethod.GET)
-    public ResponseEntity<List<Produto>> BuscarTodos() {
-        Produto geladeira = new Produto(null, "Geladeira" );
-        Produto microondas = new Produto(null, "microondas" );
-        List<Produto> list = new ArrayList<>(Arrays.asList(geladeira, microondas));
-        return ResponseEntity.ok().body(list);
+    public static void rest() throws IOException {
+
+        ProdutoServico produtoServico = new ProdutoServico();
+        int serverPort = 4200;
+        HttpServer server = HttpServer.create(new InetSocketAddress(serverPort), 0);
+
+        server.createContext("/produtos", exchange -> {
+            if ("GET".equals(exchange.getRequestMethod())) {
+                Gson g = new Gson();
+                String produtoJson = g.toJson(produtoServico.executarBuscarTodos());
+                exchange.getResponseHeaders().set("Content-Type", "application/json");
+                exchange.getResponseHeaders().set("Access-Control-Allow-Origin", "*");
+                exchange.sendResponseHeaders(200, produtoJson.getBytes().length);
+                OutputStream output = exchange.getResponseBody();
+                output.write(produtoJson.getBytes());
+                output.flush();
+            } else {
+                exchange.sendResponseHeaders(405, -1);
+            }
+            exchange.close();
+        });
+        server.setExecutor(null);
+        server.start();
     }
 }
-*/

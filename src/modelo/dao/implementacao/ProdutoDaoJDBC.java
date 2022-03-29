@@ -25,32 +25,46 @@ public class ProdutoDaoJDBC implements ProdutoDao {
         this.conn = conn;
     }
 
-
     @Override
-    public void inserir(Produto obj) {
+    public Integer inserir(Produto obj) {
         PreparedStatement st = null;
+
         try {
-            st = conn.prepareStatement("INSERT INTO produto " + "(prod_nome, prod_descricao) " + "VALUES " + "(?, ?)");
+            st = conn.prepareStatement("INSERT INTO produto " + "(prod_nome, prod_descricao) " + "VALUES " + "(?, ?)", Statement.RETURN_GENERATED_KEYS);
 
             st.setString(1, obj.getNome());
             st.setString(2, obj.getDescricao());
 
-            st.executeUpdate();
+           Integer rowsAffected = st.executeUpdate();
+
+            if (rowsAffected > 0) {
+                ResultSet rs = st.getGeneratedKeys();
+                if (rs.next()) {
+                    int id = rs.getInt(1);
+                    obj.setId(id);
+                }
+                DB.closeResultSet(rs);
+            }
+
+            if (Objects.nonNull(obj.getListMerc())) {
+                for (int i = 0; i < obj.getListMerc().size(); i++) {
+                    obj.getListMerc().get(i).setIdProd(obj.getId());
+                    mercadoDao.inserir(obj.getListMerc().get(i));
+                }
+            }
+            if (Objects.nonNull(obj.getListTec())) {
+                for (int i = 0; i < obj.getListTec().size(); i++) {
+                    obj.getListTec().get(i).setIdProd(obj.getId());
+                    tecnologiaDao.inserir(obj.getListTec().get(i));
+                }
+            }
+
+            return obj.getId();
 
         } catch (SQLException e) {
             throw new DbException(e.getMessage());
         } finally {
             DB.closeStatement(st);
-        }
-        if (obj.getListMerc() != null) {
-            for (int i = 0; i > obj.getListMerc().size(); i++) {
-                mercadoDao.inserir(obj.getListMerc().get(i));
-            }
-        }
-        if (obj.getListTec() != null) {
-            for (int i = 0; i > obj.getListTec().size(); i++) {
-                tecnologiaDao.inserir(obj.getListTec().get(i));
-            }
         }
     }
 
@@ -77,7 +91,7 @@ public class ProdutoDaoJDBC implements ProdutoDao {
     public void deletar(Integer id) {
         PreparedStatement st = null;
         try {
-            st = conn.prepareStatement("DELETE FROM produto WHERE prod_id = ? on delete cascade");//O on delete cascade é para deletar todas as tecnologias e mercados que estão referenciando o produto que será deletado.
+            st = conn.prepareStatement("DELETE FROM produto WHERE prod_id = ?");//O on delete cascade é para deletar todas as tecnologias e mercados que estão referenciando o produto que será deletado.
 
             st.setInt(1, id);
 
@@ -94,7 +108,7 @@ public class ProdutoDaoJDBC implements ProdutoDao {
         PreparedStatement st = null;
         ResultSet rs = null;
         try {
-            st = conn.prepareStatement("SELECT * FROM (produto inner join mercado_alvo on produto.prod_id = mercado_alvo.prod_id and produto.prod_id = ?) inner join tecnologia on tecnologia.prod_id = produto.prod_id");
+            st = conn.prepareStatement("SELECT * FROM (produto left join mercado_alvo on produto.prod_id = mercado_alvo.prod_id and produto.prod_id = ?) left join tecnologia on tecnologia.prod_id = produto.prod_id");
             st.setInt(1, id);
             rs = st.executeQuery();
 
@@ -107,12 +121,13 @@ public class ProdutoDaoJDBC implements ProdutoDao {
                 obj.setId(rs.getInt("produto.prod_id"));
                 obj.setNome(rs.getString("prod_nome"));
                 obj.setDescricao(rs.getString("prod_descricao"));
-                Mercado mercado = new Mercado();
-                Tecnologia tecnologia = new Tecnologia();
+
                 //pegar todos os mercados associados com este produto
                 do {
+                    Mercado mercado = new Mercado();
+                    Tecnologia tecnologia = new Tecnologia();
                     if (rs.getInt("mercado_alvo.prod_id") == obj.getId()) {
-                        mercado.setId(rs.getInt(rs.getInt("mercado_alvo.merc_id")));
+                        mercado.setId(rs.getInt("mercado_alvo.merc_id"));
                         mercado.setNome(rs.getString("mercado_alvo.merc_nome"));
                         mercado.setIdProd(rs.getInt("mercado_alvo.prod_id"));
                         mercadoSet.add(mercado);
@@ -191,7 +206,7 @@ public class ProdutoDaoJDBC implements ProdutoDao {
             Set<Mercado> setMercTemp = mercSet.stream().filter(x -> Objects.equals(x.getIdProd(), prod.getId())).collect(Collectors.toSet());
             prod.setListMerc(new ArrayList<>(setMercTemp));
 
-            Set<Tecnologia> setTecTemp = tecSet.stream().filter(x -> x.getIdProd() == prod.getId()).collect(Collectors.toSet());
+            Set<Tecnologia> setTecTemp = tecSet.stream().filter(x -> Objects.equals(x.getIdProd(), prod.getId())).collect(Collectors.toSet());
             prod.setListTec(new ArrayList<>(setTecTemp));
         }
     }
